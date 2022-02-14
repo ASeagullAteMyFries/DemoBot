@@ -4,7 +4,15 @@
 
 package frc.robot;
 
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.networktables.NetworkTable;
+import edu.wpi.first.networktables.NetworkTableEntry;
+import edu.wpi.first.networktables.NetworkTableInstance;
+
 import edu.wpi.first.wpilibj.TimedRobot;
+import edu.wpi.first.wpilibj.drive.DifferentialDrive;
+import edu.wpi.first.wpilibj.motorcontrol.MotorControllerGroup;
+import edu.wpi.first.wpilibj.motorcontrol.Spark;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
@@ -20,6 +28,14 @@ public class Robot extends TimedRobot {
   private String m_autoSelected;
   private final SendableChooser<String> m_chooser = new SendableChooser<>();
 
+  private Spark left0, left1, right0, right1;
+  private MotorControllerGroup left, right;
+  private DifferentialDrive drivetrain;
+
+  private XBoxController controller;
+
+  private NetworkTable table;
+  private NetworkTableEntry tx, ty, ta;
   /**
    * This function is run when the robot is first started up and should be used for any
    * initialization code.
@@ -27,6 +43,23 @@ public class Robot extends TimedRobot {
   @Override
   public void robotInit() {
 
+    left0 = new Spark(0);
+    left1 = new Spark(1);
+    right0 = new Spark(2);
+    right1 = new Spark(3);
+
+    left = new MotorControllerGroup(left0, left1);
+    right = new MotorControllerGroup(right0, right1);
+
+    drivetrain = new DifferentialDrive(left, right);
+
+    controller = new XBoxController(0);
+
+    table = NetworkTableInstance.getDefault().getTable("limelight");
+    tx = table.getEntry("tx");
+    ty = table.getEntry("ty");
+    ta = table.getEntry("ta");
+    
     System.out.println("Robot init");
 
     m_chooser.setDefaultOption("Default Auto", kDefaultAuto);
@@ -64,15 +97,14 @@ public class Robot extends TimedRobot {
   /** This function is called periodically during autonomous. */
   @Override
   public void autonomousPeriodic() {
-    switch (m_autoSelected) {
-      case kCustomAuto:
-        // Put custom auto code here
-        break;
-      case kDefaultAuto:
-      default:
-        // Put default auto code here
-        break;
-    }
+    //read values periodically
+    double x = tx.getDouble(0.0);
+    double y = ty.getDouble(0.0);
+    double area = ta.getDouble(0.0);
+
+    // if negative will turn left
+    // if positive will tyrn rught
+    drivetrain.tankDrive((x / 100.0), -(x / 100));
   }
 
   /** This function is called once when teleop is enabled. */
@@ -83,7 +115,9 @@ public class Robot extends TimedRobot {
 
   /** This function is called periodically during operator control. */
   @Override
-  public void teleopPeriodic() {}
+  public void teleopPeriodic() {
+    drivetrain.tankDrive(controller.getLeftThumbstickY(), controller.getRightThumbstickY());
+  }
 
   /** This function is called once when the robot is disabled. */
   @Override
